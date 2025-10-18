@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Конвертер цветов RGB ↔ LAB ↔ CMYK</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            display: flex;
+            gap: 40px;
+        }
+        .color-model {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        input[type="number"], input[type="range"] {
+            width: 60px;
+        }
+        label {
+            display: block;
+            margin: 8px 0 4px;
+        }
+        .color-preview {
+            width: 150px;
+            height: 150px;
+            margin-top: 20px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+        .warning {
+            color: red;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Конвертер цветов RGB ↔ LAB ↔ CMYK</h1>
+
+<div class="container">
+    <div class="color-model" id="rgb-model">
+        <h3>RGB</h3>
+        <label>R: <input type="number" id="r" min="0" max="255">
+            <input type="range" id="rRange" min="0" max="255"></label>
+        <label>G: <input type="number" id="g" min="0" max="255">
+            <input type="range" id="gRange" min="0" max="255"></label>
+        <label>B: <input type="number" id="b" min="0" max="255">
+            <input type="range" id="bRange" min="0" max="255"></label>
+        <input type="color" id="colorPicker">
+        <div class="warning" id="rgbWarning"></div>
+    </div>
+
+    <div class="color-model" id="lab-model">
+        <h3>LAB</h3>
+        <label>L: <input type="number" id="l" min="0" max="100"></label>
+        <label>A: <input type="number" id="a" min="-128" max="127"></label>
+        <label>B: <input type="number" id="bLab" min="-128" max="127"></label>
+        <div class="warning" id="labWarning"></div>
+    </div>
+
+    <div class="color-model" id="cmyk-model">
+        <h3>CMYK</h3>
+        <label>C: <input type="number" id="c" min="0" max="100"></label>
+        <label>M: <input type="number" id="m" min="0" max="100"></label>
+        <label>Y: <input type="number" id="y" min="0" max="100"></label>
+        <label>K: <input type="number" id="k" min="0" max="100"></label>
+        <div class="warning" id="cmykWarning"></div>
+    </div>
+</div>
+
+<div class="color-preview" id="preview"></div>
+
+<script>
+  function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
+
+  function rgbToCmyk(r, g, b){
+    let rr = r/255, gg = g/255, bb = b/255;
+    let k = 1 - Math.max(rr, gg, bb);
+    let c = (1-rr-k)/(1-k) || 0;
+    let m = (1-gg-k)/(1-k) || 0;
+    let y = (1-bb-k)/(1-k) || 0;
+    return {c: c*100, m: m*100, y: y*100, k: k*100};
+  }
+  function cmykToRgb(c, m, y, k){
+    let r = 255*(1-c/100)*(1-k/100);
+    let g = 255*(1-m/100)*(1-k/100);
+    let b = 255*(1-y/100)*(1-k/100);
+    return {r, g, b};
+  }
+
+  // ===== RGB ↔ LAB =====
+  function rgbToXyz(r, g, b){
+    r /= 255; g /= 255; b /= 255;
+    r = r>0.04045 ? Math.pow((r+0.055)/1.055,2.4) : r/12.92;
+    g = g>0.04045 ? Math.pow((g+0.055)/1.055,2.4) : g/12.92;
+    b = b>0.04045 ? Math.pow((b+0.055)/1.055,2.4) : b/12.92;
+    let x = r*0.4124 + g*0.3576 + b*0.1805;
+    let y = r*0.2126 + g*0.7152 + b*0.0722;
+    let z = r*0.0193 + g*0.1192 + b*0.9505;
+    return {x:x*100, y:y*100, z:z*100};
+  }
+  function xyzToLab(x, y, z){
+    let refX = 95.047, refY = 100.000, refZ = 108.883;
+    x/=refX; y/=refY; z/=refZ;
+    x = x>0.008856 ? Math.cbrt(x) : (7.787*x)+(16/116);
+    y = y>0.008856 ? Math.cbrt(y) : (7.787*y)+(16/116);
+    z = z>0.008856 ? Math.cbrt(z) : (7.787*z)+(16/116);
+    let L = (116*y)-16;
+    let A = 500*(x - y);
+    let B = 200*(y - z);
+    return {L, A, B};
+  }
+  function rgbToLab(r, g, b){
+    let xyz = rgbToXyz(r, g, b);
+    return xyzToLab(xyz.x, xyz.y, xyz.z);
+  }
+
+  function labToXyz(L, A, B){
+    let y = (L + 16)/116;
+    let x = A/500 + y;
+    let z = y - B/200;
+    x = x**3>0.008856 ? x**3 : (x-16/116)/7.787;
+    y = y**3>0.008856 ? y**3 : (y-16/116)/7.787;
+    z = z**3>0.008856 ? z**3 : (z-16/116)/7.787;
+    let refX = 95.047, refY = 100.000, refZ = 108.883;
+    return {x:x*refX, y:y*refY, z:z*refZ};
+  }
+  function xyzToRgb(x, y, z){
+    x/=100; y/=100; z/=100;
+    let r = x*3.2406 + y*(-1.5372) + z*(-0.4986);
+    let g = x*(-0.9689) + y*1.8758 + z*0.0415;
+    let b = x*0.0557 + y*(-0.2040) + z*1.0570;
+    r = r>0.0031308 ? 1.055*Math.pow(r,1/2.4)-0.055 : 12.92*r;
+    g = g>0.0031308 ? 1.055*Math.pow(g,1/2.4)-0.055 : 12.92*g;
+    b = b>0.0031308 ? 1.055*Math.pow(b,1/2.4)-0.055 : 12.92*b;
+    return {r: clamp(Math.round(r*255),0,255), g: clamp(Math.round(g*255),0,255), b: clamp(Math.round(b*255),0,255)};
+  }
+  function labToRgb(L, A, B){
+    let xyz = labToXyz(L, A, B);
+    return xyzToRgb(xyz.x, xyz.y, xyz.z);
+  }
+
+  const rInput = document.getElementById('r'), gInput = document.getElementById('g'), bInput = document.getElementById('b');
+  const rRange = document.getElementById('rRange'), gRange = document.getElementById('gRange'), bRange = document.getElementById('bRange');
+  const colorPicker = document.getElementById('colorPicker');
+
+  const lInput = document.getElementById('l'), aInput = document.getElementById('a'), bLabInput = document.getElementById('bLab');
+  const cInput = document.getElementById('c'), mInput = document.getElementById('m'), yInput = document.getElementById('y'), kInput = document.getElementById('k');
+
+  const preview = document.getElementById('preview');
+
+  function updateFromRGB(){
+    let r = clamp(parseInt(rInput.value)||0,0,255);
+    let g = clamp(parseInt(gInput.value)||0,0,255);
+    let b = clamp(parseInt(bInput.value)||0,0,255);
+    rInput.value=r; gInput.value=g; bInput.value=b;
+    rRange.value=r; gRange.value=g; bRange.value=b;
+    colorPicker.value = rgbToHex(r,g,b);
+
+    let lab = rgbToLab(r,g,b);
+    lInput.value = lab.L.toFixed(1);
+    aInput.value = lab.A.toFixed(1);
+    bLabInput.value = lab.B.toFixed(1);
+
+    let cmyk = rgbToCmyk(r,g,b);
+    cInput.value = cmyk.c.toFixed(1);
+    mInput.value = cmyk.m.toFixed(1);
+    yInput.value = cmyk.y.toFixed(1);
+    kInput.value = cmyk.k.toFixed(1);
+
+    preview.style.backgroundColor = `rgb(${r},${g},${b})`;
+  }
+
+  function rgbToHex(r,g,b){
+    return "#" + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+  }
+
+  [rInput,gInput,bInput,rRange,gRange,bRange].forEach(el=>{
+    el.addEventListener('input', updateFromRGB);
+  });
+  colorPicker.addEventListener('input', ()=>{
+    let hex = colorPicker.value;
+    let r=parseInt(hex.slice(1,3),16);
+    let g=parseInt(hex.slice(3,5),16);
+    let b=parseInt(hex.slice(5,7),16);
+    rInput.value=r; gInput.value=g; bInput.value=b;
+    rRange.value=r; gRange.value=g; bRange.value=b;
+    updateFromRGB();
+  });
+
+  rInput.value=255; gInput.value=0; bInput.value=0;
+  updateFromRGB();
+</script>
+
+</body>
+</html>
