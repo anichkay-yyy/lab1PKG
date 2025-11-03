@@ -1,0 +1,60 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+html {
+    height: 100%;
+}
+
+body {
+    background: #1E1E1E;
+    height: 100%;
+}
+
+header {
+    height: 100vh;
+    width: 100%;
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+header .content {
+    text-align: center;
+    color: #0c5cac;
+}
+
+header .content h1{
+    font-size: 120px;
+    font-family: Hack;
+}
+
+header .content h2{
+    font-family: Hack;
+}
+
+
+header .content button {
+    margin-top: 20px;
+    color: #d9d9d9;
+    font-family: Hack;
+    font-size: 20px;
+    background: #06386a;
+    width: 140px;
+    height: 40px;
+    border-radius: 12px;
+    border: 0;
+    animation: moveColor 2s infinite alternate;
+}
+
+@keyframes moveColor {
+    0% {
+        background-color: #0c5cac;
+    }
+    100% {
+        background-color: #06386a;
+    }
+}
