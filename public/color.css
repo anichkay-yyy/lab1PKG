@@ -4,7 +4,6 @@
     box-sizing: border-box;
 }
 
-
 html {
     height: 100%;
 }
@@ -17,23 +16,104 @@ body {
 .wrap {
     display: flex;
     justify-content: center;
+    align-items: center;
+    padding: 20px;
+    height: 100%;
 }
 
-#rgbInput {
+.circle {
+    width: 200px;
+    height: 200px;
+    background: black;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    transition: background 0.2s ease;
+}
+
+@media (max-width: 700px) {
+    .circle {
+        width: 160px;
+        height: 160px;
+    }
+}
+
+@media (max-width: 480px) {
+    .circle {
+        width: 130px;
+        height: 130px;
+        border-radius: 16px;
+    }
+}
+
+/* ========================
+   FORM — адаптив
+======================== */
+
+.form {
+    border: 1px solid #0c5cac;
+    padding: 20px;
+    padding-top: 0px;
+    padding-bottom: 40px;
+    border-radius: 12px;
+    width: 100%;
+}
+
+.form > p {
+    color: #0c5cac;
+    font-family: Hack;
+    font-size: 20px;
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+@media (max-width: 500px) {
+    .form {
+        padding: 15px;
+        padding-top: 0;
+    }
+
+    .form > p {
+        font-size: 17px;
+    }
+}
+
+/* ========================
+   INPUT GRID — адаптив
+======================== */
+
+#rgbInput, #labInput, #cmykInput {
     display: grid;
-    grid-template-columns: 70px 70px 70px;
     grid-column-gap: 5px;
 }
 
-#labInput {
-    display: grid;
-    grid-template-columns: 70px 70px 70px;
-    grid-column-gap: 5px;
+#rgbInput, #labInput {
+    grid-template-columns: repeat(3, 70px);
 }
+
 #cmykInput {
-    display: grid;
-    grid-template-columns: 70px 70px 70px 70px;
-    grid-column-gap: 5px;
+    grid-template-columns: repeat(4, 70px);
+}
+
+@media (max-width: 500px) {
+    #rgbInput, #labInput {
+        grid-template-columns: repeat(3, 55px);
+    }
+
+    #cmykInput {
+        grid-template-columns: repeat(4, 55px);
+    }
+}
+
+@media (max-width: 400px) {
+    #rgbInput, #labInput {
+        grid-template-columns: repeat(3, 45px);
+        grid-column-gap: 3px;
+    }
+
+    #cmykInput {
+        grid-template-columns: repeat(4, 45px);
+        grid-column-gap: 3px;
+    }
 }
 
 .input {
@@ -44,9 +124,25 @@ body {
     color: #0c5cac;
     font-family: Hack;
     padding: 10px;
+    font-size: 16px;
 }
 
 .input:focus {
     outline: none !important;
 }
 
+@media (max-width: 500px) {
+    .input {
+        font-size: 14px;
+        padding: 8px;
+        height: 22px;
+    }
+}
+
+@media (max-width: 400px) {
+    .input {
+        font-size: 13px;
+        padding: 6px;
+        height: 20px;
+    }
+}

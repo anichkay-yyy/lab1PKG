@@ -1,262 +1,330 @@
-function gammaCorrection(x) {
-  return x >= 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92;
+// ====================
+// GAMMA
+// ====================
+
+function gammaInverse(x) {
+  return x <= 0.04045
+    ? x / 12.92
+    : Math.pow((x + 0.055) / 1.055, 2.4);
 }
 
-function inverseGammaCorrection(x) {
-  return x >= 0.0031308 ? 1.055 * Math.pow(x, 1/2.4) - 0.055 : 12.92 * x;
+function gammaForward(x) {
+  return x <= 0.0031308
+    ? 12.92 * x
+    : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
 }
+
+// ====================
+// LAB base functions
+// ====================
 
 function f(t) {
-  return t > 0.008856 ? Math.pow(t, 1/3) : 7.787 * t + 16/116;
+  return t > 0.008856
+    ? Math.cbrt(t)
+    : 7.787 * t + 16 / 116;
 }
 
 function fInv(t) {
-  return t > 0.008856 ? Math.pow(t, 3) : (t - 16/116) / 7.787;
+  return t > 0.206893
+    ? t * t * t
+    : (t - 16 / 116) / 7.787;
 }
 
-const whitePoint = {X: 95.047, Y: 100.000, Z: 108.883};
+// ====================
+// White point D65 (NORMED)
+// ====================
+
+const whitePoint = {
+  X: 0.95047,
+  Y: 1.00000,
+  Z: 1.08883
+};
+
+// ====================
+// RGB → XYZ
+// ====================
 
 function rgbToXyz(r, g, b) {
-  let Rn = gammaCorrection(r / 255);
-  let Gn = gammaCorrection(g / 255);
-  let Bn = gammaCorrection(b / 255);
+  let R = gammaInverse(r / 255);
+  let G = gammaInverse(g / 255);
+  let B = gammaInverse(b / 255);
 
-  const X = Rn * 0.412453 + Gn * 0.357580 + Bn * 0.180423;
-  const Y = Rn * 0.212671 + Gn * 0.715160 + Bn * 0.072169;
-  const Z = Rn * 0.019334 + Gn * 0.119193 + Bn * 0.950227;
+  const X = R * 0.4124564 + G * 0.3575761 + B * 0.1804375;
+  const Y = R * 0.2126729 + G * 0.7151522 + B * 0.0721750;
+  const Z = R * 0.0193339 + G * 0.1191920 + B * 0.9503041;
 
-  return {X: X * 100, Y: Y * 100, Z: Z * 100};
+  return { X, Y, Z };
 }
+
+// ====================
+// XYZ → RGB
+// ====================
 
 function xyzToRgb(X, Y, Z) {
-  X = X / 100;
-  Y = Y / 100;
-  Z = Z / 100;
+  let R =  3.2404542 * X - 1.5371385 * Y - 0.4985314 * Z;
+  let G = -0.9692660 * X + 1.8760108 * Y + 0.0415560 * Z;
+  let B =  0.0556434 * X - 0.2040259 * Y + 1.0572252 * Z;
 
-  let Rn = X * 3.2406 + Y * -1.5372 + Z * -0.4986;
-  let Gn = X * -0.9689 + Y * 1.8758 + Z * 0.0415;
-  let Bn = X * 0.0557 + Y * -0.2040 + Z * 1.0570;
+  R = gammaForward(R);
+  G = gammaForward(G);
+  B = gammaForward(B);
 
-  Rn = inverseGammaCorrection(Rn);
-  Gn = inverseGammaCorrection(Gn);
-  Bn = inverseGammaCorrection(Bn);
-
-  return {
-    r: Math.round(Rn * 255),
-    g: Math.round(Gn * 255),
-    b: Math.round(Bn * 255)
+  const rgb = {
+    r: Math.round(Math.max(0, Math.min(255, R * 255))),
+    g: Math.round(Math.max(0, Math.min(255, G * 255))),
+    b: Math.round(Math.max(0, Math.min(255, B * 255)))
   };
+
+  updateCircleColor(rgb.r, rgb.g, rgb.b);
+
+  return rgb;
 }
 
-function xyzToLab(X, Y, Z) {
-  const Xn = whitePoint.X;
-  const Yn = whitePoint.Y;
-  const Zn = whitePoint.Z;
+// ====================
+// XYZ → LAB
+// ====================
 
-  const fx = f(X / Xn);
-  const fy = f(Y / Yn);
-  const fz = f(Z / Zn);
+function xyzToLab(X, Y, Z) {
+  const fx = f(X / whitePoint.X);
+  const fy = f(Y / whitePoint.Y);
+  const fz = f(Z / whitePoint.Z);
 
   const L = 116 * fy - 16;
   const a = 500 * (fx - fy);
   const b = 200 * (fy - fz);
 
-  return {L, a, b};
+  return { L, a, b };
 }
+
+// ====================
+// LAB → XYZ
+// ====================
 
 function labToXyz(L, a, b) {
-  const Xn = whitePoint.X;
-  const Yn = whitePoint.Y;
-  const Zn = whitePoint.Z;
-
   const fy = (L + 16) / 116;
-  const fx = a / 500 + fy;
+  const fx = fy + a / 500;
   const fz = fy - b / 200;
 
-  const X = fInv(fx) * Xn;
-  const Y = fInv(fy) * Yn;
-  const Z = fInv(fz) * Zn;
-
-  return {X, Y, Z};
+  return {
+    X: fInv(fx) * whitePoint.X,
+    Y: fInv(fy) * whitePoint.Y,
+    Z: fInv(fz) * whitePoint.Z
+  };
 }
+
+// ====================
+// RGB → LAB
+// ====================
 
 function rgbToLab(r, g, b, draw) {
   const xyz = rgbToXyz(r, g, b);
-  const inputs = document.getElementById("labInput").children;
-  const res = xyzToLab(xyz.X, xyz.Y, xyz.Z);;
+  const lab = xyzToLab(xyz.X, xyz.Y, xyz.Z);
+
   if (draw) {
-    const fields = "Lab";
-    for (inputNum in inputs) {
-      inputs[inputNum].value = res[fields[inputNum]]
-    }
+    const inputs = document.querySelectorAll("#labInput input");
+    inputs[0].value = lab.L.toFixed(4);
+    inputs[1].value = lab.a.toFixed(4);
+    inputs[2].value = lab.b.toFixed(4);
   }
+
+  updateCircleColor(r, g, b);
+  return lab;
+}
+
+// ====================
+// LAB → RGB
+// ====================
+
+function labToRgb(L, a, b, draw) {
+  const xyz = labToXyz(L, a, b);
+  const rgb = xyzToRgb(xyz.X, xyz.Y, xyz.Z);
+
+  if (draw) {
+    const inputs = document.querySelectorAll("#rgbInput input");
+    inputs[0].value = rgb.r;
+    inputs[1].value = rgb.g;
+    inputs[2].value = rgb.b;
+  }
+
+  updateCircleColor(rgb.r, rgb.g, rgb.b);
+  return rgb;
+}
+
+// ====================
+// RGB → CMYK
+// ====================
+
+function rgbToCmyk(r, g, b, draw) {
+  const R = r / 255;
+  const G = g / 255;
+  const B = b / 255;
+
+  const k = 1 - Math.max(R, G, B);
+
+  if (k === 1) {
+    const res = [0, 0, 0, 1];
+    if (draw) {
+      const inputs = document.querySelectorAll("#cmykInput input");
+      res.forEach((v, i) => inputs[i].value = v);
+    }
+    updateCircleColor(r, g, b);
+    return res;
+  }
+
+  const c = (1 - R - k) / (1 - k);
+  const m = (1 - G - k) / (1 - k);
+  const y = (1 - B - k) / (1 - k);
+
+  const res = [
+    +c.toFixed(4),
+    +m.toFixed(4),
+    +y.toFixed(4),
+    +k.toFixed(4)
+  ];
+
+  if (draw) {
+    const inputs = document.querySelectorAll("#cmykInput input");
+    res.forEach((v, i) => inputs[i].value = v);
+  }
+
+  updateCircleColor(r, g, b);
   return res;
 }
 
-function labToRgb(L, a, b, draw) {
-  const safeL = Math.max(0, Math.min(100, L));
-  const safeA = Math.max(-128, Math.min(127, a));
-  const safeB = Math.max(-128, Math.min(127, b));
+// ====================
+// CMYK → RGB
+// ====================
 
-  const xyz = labToXyz(safeL, safeA, safeB);
-  const rgb = xyzToRgb(xyz.X, xyz.Y, xyz.Z);
+function cmykToRgb(c, m, y, k, draw) {
+  const R = 255 * (1 - c) * (1 - k);
+  const G = 255 * (1 - m) * (1 - k);
+  const B = 255 * (1 - y) * (1 - k);
 
-  const res = {
-    r: Math.max(0, Math.min(255, Math.round(rgb.r))),
-    g: Math.max(0, Math.min(255, Math.round(rgb.g))),
-    b: Math.max(0, Math.min(255, Math.round(rgb.b)))
+  const rgb = {
+    r: Math.round(Math.max(0, Math.min(255, R))),
+    g: Math.round(Math.max(0, Math.min(255, G))),
+    b: Math.round(Math.max(0, Math.min(255, B)))
   };
 
   if (draw) {
-    const inputs = document.getElementById("rgbInput").children;
-    const fields = "rgb";
-    for (inputNum in inputs) {
-      inputs[inputNum].value = res[fields[inputNum]]
-    }
+    const inputs = document.querySelectorAll("#rgbInput input");
+    inputs[0].value = rgb.r;
+    inputs[1].value = rgb.g;
+    inputs[2].value = rgb.b;
   }
-  return res;
+
+  updateCircleColor(rgb.r, rgb.g, rgb.b);
+  return rgb;
 }
+
+// ====================
+// CMYK ↔ LAB
+// ====================
 
 function labToCmyk(L, a, b, draw) {
   const rgb = labToRgb(L, a, b);
-  const res = rgbToCmyk(rgb.r, rgb.g, rgb.b);
-  if (draw) {
-    const inputs = document.getElementById("cmykInput").children;
-    for (inputNum in inputs) {
-      inputs[inputNum].value = res[inputNum]
-    }
-  }
-  return res;
+  return rgbToCmyk(rgb.r, rgb.g, rgb.b, draw);
 }
 
-function cmykToLab(c, m, y, k) {
+function cmykToLab(c, m, y, k, draw) {
   const rgb = cmykToRgb(c, m, y, k);
-  return rgbToLab(rgb.r, rgb.g, rgb.b);
+  return rgbToLab(rgb.r, rgb.g, rgb.b, draw);
 }
 
-function rgbToCmyk(r, g, b, draw) {
-  r = r / 255;
-  g = g / 255;
-  b = b / 255;
+// ====================
+// VALIDATION
+// ====================
 
-  const k = 1 - Math.max(r, g, b);
-
-  if (k === 1) {
-    return { c: 0, m: 0, y: 0, k: 1 };
-  }
-
-  const c = (1 - r - k) / (1 - k);
-  const m = (1 - g - k) / (1 - k);
-  const y = (1 - b - k) / (1 - k);
-
-  const res = [
-    Math.round(c * 100) / 100,
-    Math.round(m * 100) / 100,
-    Math.round(y * 100) / 100,
-    Math.round(k * 100) / 100
-  ];
-  if (draw) {
-    const inputs = document.getElementById("cmykInput").children;
-    for (inputNum in inputs) {
-      inputs[inputNum].value = res[inputNum]
-    }
-  }
-  return res;
+function rgbValidate(evt) {
+  const v = +evt.target.value;
+  if (isNaN(v) || v < 0 || v > 255) evt.target.value = "";
 }
 
-function cmykToRgb(c, m, y, k) {
-  const r = 255 * (1 - c) * (1 - k);
-  const g = 255 * (1 - m) * (1 - k);
-  const b = 255 * (1 - y) * (1 - k);
-
-  return {
-    r: Math.round(Math.max(0, Math.min(255, r))),
-    g: Math.round(Math.max(0, Math.min(255, g))),
-    b: Math.round(Math.max(0, Math.min(255, b)))
-  };
+function cmykValidate(evt) {
+  const v = +evt.target.value;
+  if (isNaN(v) || v < 0 || v > 1) evt.target.value = "";
 }
 
+function labValidate(evt, isL) {
+  const v = evt.target.value;
+  if (v === "-") return;
 
-const rgbValidate = (evt) => {
-  if (isNaN(+evt.target.value)) {
-    evt.target.value = "";
-  }
-  if (+evt.target.value > 255 || +evt.target.value < 0) {
-    evt.target.value = "";
-  }
-}
-
-const cmykValidate = (evt) => {
-  if (isNaN(+evt.target.value)) {
-    evt.target.value = "";
-    return;
-  }
-  if (+evt.target.value > 1 || +evt.target.value < 0) {
-    evt.target.value = "";
-  }
-}
-
-const labValidate = (evt, isL) => {
-  if (isNaN(+evt.target.value) && evt.target.value !== "-") {
+  const num = +v;
+  if (isNaN(num)) {
     evt.target.value = "";
     return;
   }
 
-  if (isL) {
-    if (+evt.target.value > 100 || +evt.target.value < 0) {
-      evt.target.value = "";
-      return;
-    }
+  if (isL && (num < 0 || num > 100)) {
+    evt.target.value = "";
+    return;
   }
 
-  if (+evt.target.value > 127 || +evt.target.value < -128) {
+  if (num < -128 || num > 127) {
     evt.target.value = "";
   }
 }
 
+// ====================
+// UPDATE CIRCLE COLOR
+// ====================
 
-const updateColors = (evt, system) => {
+function updateCircleColor(r, g, b) {
+  const el = document.querySelector(".circle");
+  if (!el) return;
+  el.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+}
+
+// ====================
+// UPDATE SYSTEM
+// ====================
+
+function updateColors(evt, system) {
   const systems = {
-    "rgb": [rgbToLab, rgbToCmyk],
-    "lab": [labToRgb, labToCmyk],
-    "cmyk": []
+    rgb: [rgbToLab, rgbToCmyk],
+    lab: [labToRgb, labToCmyk],
+    cmyk: [cmykToLab, cmykToRgb]
   };
 
-  const values = [];
-  for (const input of evt.target.parentElement.children) {
-    values.push(+input.value)
-  }
-  for (const updateFunc of systems[system]) {
-    updateFunc(...values, true);
-  }
-};
+  const parent = evt.target.parentElement;
+  const inputs = parent.querySelectorAll("input");
+  const values = Array.from(inputs).map(v => +v.value);
 
-const
-  rgbColorInputs = Array.from(document.getElementById("rgbInput").getElementsByTagName("input")),
-  labColorInputs = Array.from(document.getElementById("labInput").getElementsByTagName("input")),
-  cmykColorInputs = Array.from(document.getElementById("cmykInput").getElementsByTagName("input"));
+  for (const update of systems[system]) {
+    update(...values, true);
+  }
 
-rgbColorInputs.forEach(input => {
+  if (system === "rgb") {
+    updateCircleColor(values[0], values[1], values[2]);
+  }
+}
+
+// ====================
+// EVENTS
+// ====================
+
+document.querySelectorAll("#rgbInput input").forEach(input => {
   input.addEventListener("input", (evt) => {
-    rgbValidate(evt)
+    rgbValidate(evt);
     updateColors(evt, "rgb");
   });
 });
 
-labColorInputs.shift().addEventListener("input", (evt) => {
+const labInputs = document.querySelectorAll("#labInput input");
+labInputs[0].addEventListener("input", (evt) => {
   labValidate(evt, true);
   updateColors(evt, "lab");
 });
-
-labColorInputs.forEach(input => {
-input.addEventListener("input", (evt) => {
-    labValidate(evt);
-    updateColors(evt, "lab");
-  });
+labInputs[1].addEventListener("input", (evt) => {
+  labValidate(evt);
+  updateColors(evt, "lab");
+});
+labInputs[2].addEventListener("input", (evt) => {
+  labValidate(evt);
+  updateColors(evt, "lab");
 });
 
-
-cmykColorInputs.forEach(input => {
+document.querySelectorAll("#cmykInput input").forEach(input => {
   input.addEventListener("input", (evt) => {
     cmykValidate(evt);
     updateColors(evt, "cmyk");
