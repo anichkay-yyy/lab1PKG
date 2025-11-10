@@ -34,3 +34,6 @@
 - **Validation** (rgbValidate, cmykValidate, labValidate)
 Input: event, Output: undefined.
 Цель: Выполняет валидацию данных инпутов.
+- **Events** Объявление лимсенеров, чтобы отлавливать изменение значения инпутов, валидировать их (значения), делать интерфейс отзывчивым.
+- **UPDATE CIRCLE COLOR** Обновление цвета предпросмотра.
+Input: r, g, b, Output: undefined.
