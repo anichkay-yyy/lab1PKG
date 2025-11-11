@@ -30,6 +30,13 @@ body {
     transition: background 0.2s ease;
 }
 
+#rgbInputColor {
+    width: 200px;
+    height: 200px;
+    position: absolute;
+    opacity: 0;
+}
+
 @media (max-width: 700px) {
     .circle {
         width: 160px;

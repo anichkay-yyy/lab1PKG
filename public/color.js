@@ -321,6 +321,14 @@ labInputs[1].addEventListener("input", (evt) => {
 });
 labInputs[2].addEventListener("input", (evt) => {
   labValidate(evt);
+function hexToRgb(hex) {
+  hex = hex.replace("#", "");
+  return {
+    r: parseInt(hex.slice(0, 2), 16),
+    g: parseInt(hex.slice(2, 4), 16),
+    b: parseInt(hex.slice(4, 6), 16)
+  };
+}
   updateColors(evt, "lab");
 });
 
@@ -329,4 +337,24 @@ document.querySelectorAll("#cmykInput input").forEach(input => {
     cmykValidate(evt);
     updateColors(evt, "cmyk");
   });
+});
+
+
+function hexToRgb(hex) {
+  hex = hex.replace("#", "");
+  return {
+    r: parseInt(hex.slice(0, 2), 16),
+    g: parseInt(hex.slice(2, 4), 16),
+    b: parseInt(hex.slice(4, 6), 16)
+  };
+}
+
+document.getElementById("rgbInputColor").addEventListener("input", (evt) => {
+  const rgb = hexToRgb(evt.target.value);
+  rgbToLab(rgb.r, rgb.g, rgb.b, true);
+  rgbToCmyk(rgb.r, rgb.g, rgb.b, true);
+  const rgbInputs = document.getElementById("rgbInput").children;
+  rgbInputs[0].value = rgb.r;
+  rgbInputs[1].value = rgb.g;
+  rgbInputs[2].value = rgb.b;
 });
